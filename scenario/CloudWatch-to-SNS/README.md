@@ -1,5 +1,8 @@
 # CloudWathのログを検知してSNSからメール通知するサンプル
 
+## フロー
+- 1. EC2が
+
 ## ファイル構成
 ```
 CloudWatch-to-SNS
@@ -7,8 +10,9 @@ CloudWatch-to-SNS
     - log_alart_lambda.py  // Lambda関数 
 ```
 
-## イメージ
-
+## 構成
+![template1-designer](https://user-images.githubusercontent.com/37510144/153736741-1d4d4bfc-0993-4bb9-8eec-ed09667c2e06.png)
+<br>
 
 ## 使い方
 
@@ -23,7 +27,7 @@ CloudWatch-to-SNS
 ```
 
 ### 3. SNSからメールが送られてくるので、承認する
-
+<br>
 
 ## メールサンプル
 ### 件名
