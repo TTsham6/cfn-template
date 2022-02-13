@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'CloudWatch logs → Lambda → SNS flow definition'
+
+#########################################################
+#### Parameters
+#########################################################
+Parameters:
+  # for Lambda
+  LambdaBucket:
+    Description: 'Input lambda python code bucket name' 
+    Type: String
+  PythonZip:
+    Description: 'Python Zip file name' 
+    Type: String
+  # for SNS
+  EmailAddress:
+    Description: 'Input E-mail address for SNS'
+    Type: String
+
+
+#########################################################
+#### Resources
+#########################################################
+Resources:
+  #########################################################
+  #### SNS
+  #########################################################
+
+  # ------------ SNS topic -----------------
+  SnsEmailTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: 'SnsEmailTopic' 
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref EmailAddress
+
+
+  #########################################################
+  #### Lambda
+  #########################################################  
+
+  # ------------ Lambda Function IAM Role -----------------
+  LambdaIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'LambdaFuncitonRole'
+      Description: 'Lambda Function IAM role'
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  # ------------ Lambda Function -----------------
+  CloudWatchToSnsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: 'CloudWatchToSnsFunction'
+      Description: 'CloudWatch alart lambca'
+      Handler: 'lambda_handler'
+      Role: !GetAtt LambdaIamRole.Arn
+      Runtime: python3.9
+      Timeout: 60
+      Code:
+        S3Bucket: !Ref LambdaBucket
+        S3Key: !Ref PythonZip
+      Environment:   
+        Variables: 
+          SNS_TOPIC_ARN : !Ref SnsEmailTopic
+
+  # ------------ Lambda Function Permission -----------------
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CloudWatchToSnsFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: 'logs.amazonaws.com'
+      SourceArn: !GetAtt LogGroup.Arn
+
+
+  #########################################################
+  #### CloudWatch
+  #########################################################
+
+  # ------------ CloudWatch log group  -----------------
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 1
+      LogGroupName: 'amazonlinux-message.log'
+
+  # ------------ CloudWatch subscription filter  -----------------
+  SubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties: 
+      DestinationArn: !GetAtt CloudWatchToSnsFunction.Arn
+      FilterPattern: 'error'
+      LogGroupName: !Ref LogGroup
